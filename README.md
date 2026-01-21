@@ -4,7 +4,7 @@ A beautiful, human-readable viewer for your [Claude Code](https://claude.ai/clau
 
 Claude Code stores your chat sessions in JSONL format at `~/.claude/` - which is not exactly easy to read. This tool converts those conversations into beautifully styled HTML pages that you can browse in your web browser.
 
-![Screenshot](screenshots/demo.png)
+![Screenshot](screenshots/landing.png)
 
 ## Features
 
@@ -23,7 +23,7 @@ Claude Code stores your chat sessions in JSONL format at `~/.claude/` - which is
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/claude-code-chat-viewer.git
+https://github.com/Kirushanthan03/claude-code-chat-history-viewer
 cd claude-code-chat-viewer
 
 # Make executable (optional)
