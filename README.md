@@ -197,16 +197,6 @@ Each `.jsonl` file contains the full conversation with:
 
 This viewer parses these files and renders them as styled HTML.
 
-## Screenshots
-
-### Session List
-![Session List](screenshots/session-list.png)
-
-### Chat View
-![Chat View](screenshots/chat-view.png)
-
-### Tool Calls
-![Tool Calls](screenshots/tool-calls.png)
 
 ## Contributing
 
