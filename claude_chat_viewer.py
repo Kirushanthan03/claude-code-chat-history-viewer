@@ -294,6 +294,50 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             border: 1px solid rgba(76, 175, 80, 0.3);
         }}
 
+        .search-container {{
+            margin-bottom: 20px;
+            position: relative;
+        }}
+
+        .search-box {{
+            width: 100%;
+            padding: 12px 16px 12px 40px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: border-color 0.3s;
+        }}
+
+        .search-box:focus {{
+            outline: none;
+            border-color: var(--accent);
+        }}
+
+        .search-box::placeholder {{
+            color: var(--text-secondary);
+        }}
+
+        .search-icon {{
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+        }}
+
+        .search-stats {{
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }}
+
+        .session-list li.hidden {{
+            display: none;
+        }}
+
         .text-content {{
             white-space: pre-wrap;
             word-break: break-word;
@@ -334,6 +378,56 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 header.parentElement.classList.toggle('expanded');
             }});
         }});
+
+        // Search functionality
+        const searchBox = document.getElementById('searchBox');
+        const sessionList = document.getElementById('sessionList');
+        const searchStats = document.getElementById('searchStats');
+        const totalSessionsElement = document.getElementById('totalSessions');
+
+        if (searchBox && sessionList) {{
+            const allSessions = Array.from(sessionList.querySelectorAll('li'));
+            const totalCount = allSessions.length;
+
+            searchBox.addEventListener('input', (e) => {{
+                const searchTerm = e.target.value.toLowerCase().trim();
+
+                if (searchTerm === '') {{
+                    // Show all sessions
+                    allSessions.forEach(item => item.classList.remove('hidden'));
+                    searchStats.textContent = '';
+                    if (totalSessionsElement) {{
+                        totalSessionsElement.textContent = `${{totalCount}} sessions found`;
+                    }}
+                    return;
+                }}
+
+                // Filter sessions
+                let visibleCount = 0;
+                allSessions.forEach(item => {{
+                    const title = item.getAttribute('data-title') || '';
+                    const project = item.getAttribute('data-project') || '';
+                    const preview = item.getAttribute('data-preview') || '';
+
+                    const matches = title.includes(searchTerm) ||
+                                  project.includes(searchTerm) ||
+                                  preview.includes(searchTerm);
+
+                    if (matches) {{
+                        item.classList.remove('hidden');
+                        visibleCount++;
+                    }} else {{
+                        item.classList.add('hidden');
+                    }}
+                }});
+
+                // Update search stats
+                searchStats.textContent = `Showing ${{visibleCount}} of ${{totalCount}} sessions`;
+                if (totalSessionsElement) {{
+                    totalSessionsElement.textContent = `${{visibleCount}} of ${{totalCount}} sessions`;
+                }}
+            }});
+        }}
     </script>
 </body>
 </html>
@@ -646,7 +740,7 @@ def render_session_list(sessions, is_live=False, link_prefix=""):
     """Render an index page listing all sessions."""
     items = []
 
-    for session in sessions:
+    for i, session in enumerate(sessions):
         mod_time = datetime.fromtimestamp(session['modified']).strftime("%Y-%m-%d %H:%M")
         size_kb = session['size'] / 1024
 
@@ -658,7 +752,7 @@ def render_session_list(sessions, is_live=False, link_prefix=""):
         title = session.get('summary') or f"Session {session['id'][:12]}"
 
         items.append(f'''
-            <li>
+            <li data-index="{i}" data-title="{escape(title.lower())}" data-project="{escape(session['project'].lower())}" data-preview="{escape(session['preview'].lower())}">
                 <a href="{html_file}">{escape(title)}</a>
                 <div class="session-meta">
                     <div>📁 {escape(session['project'])}</div>
@@ -680,9 +774,17 @@ def render_session_list(sessions, is_live=False, link_prefix=""):
             </script>
         '''
 
-    content = f'{live_indicator}<ul class="session-list">{"".join(items)}</ul>'
+    search_box = '''
+        <div class="search-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchBox" class="search-box" placeholder="Search sessions by title, project, or content...">
+            <div class="search-stats" id="searchStats"></div>
+        </div>
+    '''
 
-    meta = f"<span>{len(sessions)} sessions found</span>"
+    content = f'{live_indicator}{search_box}<ul class="session-list" id="sessionList">{"".join(items)}</ul>'
+
+    meta = f"<span id='totalSessions'>{len(sessions)} sessions found</span>"
     if is_live:
         meta += ' <span class="live-badge">LIVE</span>'
 
