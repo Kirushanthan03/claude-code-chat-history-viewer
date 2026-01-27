@@ -224,8 +224,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
         .session-list li {{
             background: var(--bg-secondary);
-            margin-bottom: 10px;
-            padding: 15px;
+            margin-bottom: 15px;
+            padding: 18px 20px;
             border-radius: 8px;
             border-left: 4px solid var(--accent);
             transition: transform 0.2s, box-shadow 0.2s;
@@ -241,6 +241,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             text-decoration: none;
             font-weight: 600;
             font-size: 1.1rem;
+            display: block;
+            margin-bottom: 10px;
         }}
 
         .session-list a:hover {{
@@ -248,16 +250,57 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }}
 
         .session-list .session-meta {{
-            margin-top: 8px;
-            font-size: 0.85rem;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            font-size: 0.8rem;
             color: var(--text-secondary);
+            margin-bottom: 6px;
+        }}
+
+        .session-list .session-meta > span {{
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }}
+
+        .session-list .session-time {{
+            color: #81c784;
+            font-weight: 500;
+        }}
+
+        .session-list .session-path {{
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 0.75rem;
         }}
 
         .session-list .preview {{
-            margin-top: 8px;
+            margin-top: 10px;
             font-style: italic;
             color: #888;
             font-size: 0.85rem;
+            line-height: 1.4;
+        }}
+
+        .tooltip {{
+            position: relative;
+            cursor: help;
+        }}
+
+        .tooltip:hover::after {{
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            background: var(--code-bg);
+            color: var(--text-primary);
+            padding: 6px 10px;
+            border-radius: 4px;
+            white-space: nowrap;
+            font-size: 0.75rem;
+            z-index: 1000;
+            margin-bottom: 5px;
+            border: 1px solid var(--border);
         }}
 
         .live-badge {{
@@ -455,6 +498,49 @@ def format_timestamp(ts):
     if dt:
         return dt.strftime("%Y-%m-%d %H:%M:%S")
     return ""
+
+
+def format_relative_time(timestamp):
+    """Format timestamp as relative time (e.g., '2 hours ago')."""
+    if isinstance(timestamp, (int, float)):
+        dt = datetime.fromtimestamp(timestamp)
+    else:
+        dt = timestamp
+
+    now = datetime.now()
+    diff = now - dt
+
+    seconds = diff.total_seconds()
+
+    if seconds < 60:
+        return "just now"
+    elif seconds < 3600:
+        minutes = int(seconds / 60)
+        return f"{minutes}m ago"
+    elif seconds < 86400:
+        hours = int(seconds / 3600)
+        return f"{hours}h ago"
+    elif seconds < 604800:
+        days = int(seconds / 86400)
+        return f"{days}d ago"
+    elif seconds < 2592000:
+        weeks = int(seconds / 604800)
+        return f"{weeks}w ago"
+    else:
+        months = int(seconds / 2592000)
+        if months < 12:
+            return f"{months}mo ago"
+        else:
+            years = int(months / 12)
+            return f"{years}y ago"
+
+
+def truncate_path(path, max_parts=2):
+    """Truncate path to show only the last few directories."""
+    parts = path.strip('/').split('/')
+    if len(parts) <= max_parts:
+        return path
+    return '.../' + '/'.join(parts[-max_parts:])
 
 
 def extract_text_content(content):
@@ -741,7 +827,9 @@ def render_session_list(sessions, is_live=False, link_prefix=""):
     items = []
 
     for i, session in enumerate(sessions):
-        mod_time = datetime.fromtimestamp(session['modified']).strftime("%Y-%m-%d %H:%M")
+        mod_time_dt = datetime.fromtimestamp(session['modified'])
+        relative_time = format_relative_time(mod_time_dt)
+        absolute_time = mod_time_dt.strftime("%Y-%m-%d %H:%M")
         size_kb = session['size'] / 1024
 
         if is_live:
@@ -751,12 +839,18 @@ def render_session_list(sessions, is_live=False, link_prefix=""):
 
         title = session.get('summary') or f"Session {session['id'][:12]}"
 
+        # Truncate path for display
+        full_path = session['project']
+        display_path = truncate_path(full_path, max_parts=2)
+
         items.append(f'''
             <li data-index="{i}" data-title="{escape(title.lower())}" data-project="{escape(session['project'].lower())}" data-preview="{escape(session['preview'].lower())}">
                 <a href="{html_file}">{escape(title)}</a>
                 <div class="session-meta">
-                    <div>📁 {escape(session['project'])}</div>
-                    <div>📅 {mod_time} | 💬 {session['message_count']} msgs | 📦 {size_kb:.1f} KB</div>
+                    <span class="session-time" title="{escape(absolute_time)}">🕐 {escape(relative_time)}</span>
+                    <span class="session-path tooltip" data-tooltip="{escape(full_path)}">📁 {escape(display_path)}</span>
+                    <span>💬 {session['message_count']}</span>
+                    <span>📦 {size_kb:.1f}KB</span>
                 </div>
                 <div class="preview">{escape(session['preview'])}</div>
             </li>
